@@ -2,8 +2,22 @@ import { useState, useCallback } from 'react'
 import { Search, Wallet, ArrowRightLeft, Database, Plus, RefreshCw, Copy, Check, ExternalLink, ChevronDown, ChevronUp, Settings, Activity } from 'lucide-react'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://app-jgbuodmm.fly.dev'
-const CONSIGLIERE_DIRECT = 'http://13.230.42.14:5000'
+type Network = 'mainnet' | 'testnet'
+
+const NETWORK_CONFIG: Record<Network, { apiBase: string; directUrl: string; ravenDbUrl: string; label: string }> = {
+  mainnet: {
+    apiBase: import.meta.env.VITE_API_URL || 'https://app-jgbuodmm.fly.dev',
+    directUrl: 'http://13.230.42.14:5000',
+    ravenDbUrl: 'http://13.230.42.14:8080',
+    label: 'BSV Mainnet',
+  },
+  testnet: {
+    apiBase: import.meta.env.VITE_TESTNET_API_URL || 'https://app-jgbuodmm.fly.dev',
+    directUrl: import.meta.env.VITE_TESTNET_DIRECT_URL || 'http://13.230.42.14:5000',
+    ravenDbUrl: import.meta.env.VITE_TESTNET_RAVENDB_URL || 'http://13.230.42.14:8080',
+    label: 'BSV Testnet',
+  },
+}
 
 type Tab = 'search' | 'admin' | 'status'
 
@@ -41,6 +55,7 @@ interface TransactionData {
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('search')
+  const [network, setNetwork] = useState<Network>('mainnet')
   const [searchQuery, setSearchQuery] = useState('')
   const [detectedType, setDetectedType] = useState<'address' | 'tx' | null>(null)
   const [loading, setLoading] = useState(false)
@@ -61,6 +76,23 @@ function App() {
   const [tokenId, setTokenId] = useState('')
   const [tokenSymbol, setTokenSymbol] = useState('')
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const config = NETWORK_CONFIG[network]
+
+  const switchNetwork = (n: Network) => {
+    setNetwork(n)
+    setSearchQuery('')
+    setDetectedType(null)
+    setBalances([])
+    setUtxos([])
+    setHistory(null)
+    setTxData(null)
+    setSearchedAddress('')
+    setSearchedTxId('')
+    setError(null)
+    setShowUtxos(false)
+    setShowHistory(false)
+  }
 
   const copyToClipboard = useCallback((text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -83,7 +115,7 @@ function App() {
     setShowHistory(false)
 
     try {
-      const res = await fetch(`${API_BASE}/api/address/balance`, {
+      const res = await fetch(`${config.apiBase}/api/address/balance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ addresses: [address], tokenIds: [] }),
@@ -102,7 +134,7 @@ function App() {
   const fetchUtxos = async (address: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/address/utxo-set`, {
+      const res = await fetch(`${config.apiBase}/api/address/utxo-set`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address, tokenId: null, satoshis: null }),
@@ -122,7 +154,7 @@ function App() {
   const fetchHistory = async (address: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/address/history`, {
+      const res = await fetch(`${config.apiBase}/api/address/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -157,7 +189,7 @@ function App() {
     setSearchedTxId(txId)
 
     try {
-      const res = await fetch(`${API_BASE}/api/tx/get/${txId}`)
+      const res = await fetch(`${config.apiBase}/api/tx/get/${txId}`)
       if (res.status === 404) {
         setError('Transaction not found. It may not be indexed yet.')
         return
@@ -203,7 +235,7 @@ function App() {
     if (!watchAddress || !watchName) return
     setAdminMessage(null)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/manage/address`, {
+      const res = await fetch(`${config.apiBase}/api/admin/manage/address`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: watchAddress, name: watchName }),
@@ -226,7 +258,7 @@ function App() {
     if (!tokenId || !tokenSymbol) return
     setAdminMessage(null)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/manage/stas-token`, {
+      const res = await fetch(`${config.apiBase}/api/admin/manage/stas-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenId, symbol: tokenSymbol }),
@@ -261,7 +293,7 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={`${CONSIGLIERE_DIRECT}/swagger`}
+              href={`${config.directUrl}/swagger`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-400 transition-colors"
@@ -269,9 +301,27 @@ function App() {
               Swagger <ExternalLink className="w-3 h-3" />
             </a>
             <span className="text-gray-700">|</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-gray-400">Mainnet</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => switchNetwork('mainnet')}
+                className={`text-xs px-2.5 py-1 rounded-l-full border transition-colors ${
+                  network === 'mainnet'
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-transparent text-gray-400 border-gray-600 hover:text-gray-200'
+                }`}
+              >
+                Mainnet
+              </button>
+              <button
+                onClick={() => switchNetwork('testnet')}
+                className={`text-xs px-2.5 py-1 rounded-r-full border border-l-0 transition-colors ${
+                  network === 'testnet'
+                    ? 'bg-orange-600 text-white border-orange-600'
+                    : 'bg-transparent text-gray-400 border-gray-600 hover:text-gray-200'
+                }`}
+              >
+                Testnet
+              </button>
             </div>
           </div>
         </div>
@@ -678,7 +728,7 @@ function App() {
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-sm text-emerald-400">Online</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{API_BASE}</p>
+                <p className="text-xs text-gray-500 mt-2">{config.apiBase}</p>
               </div>
 
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -696,7 +746,7 @@ function App() {
                   <span className="text-sm text-emerald-400">Online</span>
                 </div>
                 <a
-                  href={`${CONSIGLIERE_DIRECT.replace(':5000', ':8080')}/studio/index.html`}
+                  href={`${config.ravenDbUrl}/studio/index.html`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-blue-400 hover:text-blue-300 mt-2 inline-flex items-center gap-1"
@@ -719,7 +769,7 @@ function App() {
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-sm text-emerald-400">Connected</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Mainnet Subscription Active</p>
+                <p className="text-xs text-gray-500 mt-2">{config.label} Subscription Active</p>
               </div>
             </div>
 
@@ -773,7 +823,7 @@ function App() {
       <footer className="border-t border-gray-800 px-6 py-4 mt-12">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-gray-500">
           <span>dxs-consigliere BSV Explorer</span>
-          <span>Network: BSV Mainnet</span>
+          <span>Network: {config.label}</span>
         </div>
       </footer>
     </div>
