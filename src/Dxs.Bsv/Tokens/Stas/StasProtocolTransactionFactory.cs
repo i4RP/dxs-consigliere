@@ -211,7 +211,7 @@ public class StasProtocolTransactionFactory(IBroadcastProvider broadcastProvider
     )
     {
         var network = tokenPayment.OutPoint.Address.Network;
-        var redeemAddress = new Address(schema.TokenId.FromHexString(), ScriptType.P2PKH, network);
+        var redeemAddress = new Address(schema.TokenId.FromHexString(), ScriptType.P2MPKH, network);
         var splitAmount = splitDestinations.Aggregate(0UL, (current, destination) => current + destination.Satoshis);
 
         if (splitAmount > tokenPayment.OutPoint.Satoshis)
@@ -222,7 +222,7 @@ public class StasProtocolTransactionFactory(IBroadcastProvider broadcastProvider
             .Init()
             .AddInput(tokenPayment.OutPoint, tokenPayment.PrivateKey)
             .AddInput(feePayment.OutPoint, feePayment.PrivateKey)
-            .AddP2PkhOutput(tokenPayment.OutPoint.Satoshis - splitAmount, redeemAddress);
+            .AddP2MpkhOutput(tokenPayment.OutPoint.Satoshis - splitAmount, redeemAddress);
 
         foreach (var destination in splitDestinations)
             builder.AddStasOutput(destination.Satoshis, destination.Address, tokenPayment.OutPoint.ScriptPubKey);
