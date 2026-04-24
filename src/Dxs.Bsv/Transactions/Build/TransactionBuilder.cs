@@ -101,6 +101,24 @@ public class TransactionBuilder
         return this;
     }
 
+    public TransactionBuilder AddP2MpkhOutput(ulong value, Address toAddress, params byte[][] data)
+    {
+        var script = new P2MpkhScriptBuilder(toAddress);
+
+        foreach (var d in data.Where(x => x?.Length > 0))
+            script.AddReturnData(d);
+
+        _outputs.Add(new OutputBuilder
+        {
+            Value = value,
+            LockingScript = script.Bytes,
+            Address = toAddress,
+            Type = ScriptType.P2MPKH
+        });
+
+        return this;
+    }
+
     public TransactionBuilder AddNullDataOutput(params byte[][] data)
     {
         var script = new NullDataScriptBuilder(data);

@@ -52,6 +52,9 @@ public class ScriptBuildToken
         OpCodeNum = token.OpCodeNum;
         DataLength = token.DataLength;
         IsReceiverId = token.IsReceiverId;
+        IsActionData = token.IsActionData;
+        IsRedemptionId = token.IsRedemptionId;
+        IsFlagsField = token.IsFlagsField;
         OpCode = token.OpCode;
         Bytes = token.Bytes;
     }
@@ -59,6 +62,9 @@ public class ScriptBuildToken
     public byte OpCodeNum { get; }
     public int DataLength { get; }
     public bool IsReceiverId { get; set; }
+    public bool IsActionData { get; set; }
+    public bool IsRedemptionId { get; set; }
+    public bool IsFlagsField { get; set; }
     public OpCode? OpCode { get; }
     public byte[] Bytes { get; private set; }
     public bool UnknownLengthData { get; private init; }
