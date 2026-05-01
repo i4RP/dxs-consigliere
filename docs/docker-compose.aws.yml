@@ -1,0 +1,43 @@
+services:
+  ravendb:
+    image: ravendb/ravendb:latest
+    container_name: ravendb
+    ports:
+      - "8080:8080"
+    environment:
+      - RAVEN_Setup_Mode=None
+      - RAVEN_License_Eula_Accepted=true
+      - RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork
+    volumes:
+      - ravendb_data:/opt/RavenDB/Server/RavenData
+    restart: unless-stopped
+
+  consigliere:
+    image: consigliere:local
+    container_name: consigliere
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_HTTP_PORTS=5000
+      - RavenDb__Urls__0=http://ravendb:8080
+      - RavenDb__DbName=Consigliere
+      - Network=Mainnet
+      - ScanMempoolOnStart=false
+      - BlockCountToScanOnStart=0
+      - JungleBus__Enabled=true
+      - JungleBus__BlockSubscriptionId=d161bec33767024eb18bd90bd0c70c0fd199e8fb468e5cb7564bd8b54333a682
+      - JungleBus__MempoolSubscriptionId=d161bec33767024eb18bd90bd0c70c0fd199e8fb468e5cb7564bd8b54333a682
+      - BackgroundTasks__EnabledTasks__0=AppInitBackgroundTask
+      - BackgroundTasks__EnabledTasks__1=ActualChainTipVerifyBackgroundTask
+      - BackgroundTasks__EnabledTasks__2=BlockProcessBackgroundTask
+      - BackgroundTasks__EnabledTasks__3=StasAttributesChangeObserverTask
+      - BackgroundTasks__EnabledTasks__4=StasAttributesMissingTransactions
+      - BackgroundTasks__EnabledTasks__5=UnconfirmedTransactionsMonitor
+      - BackgroundTasks__EnabledTasks__6=JungleBusMempoolMonitor
+      - BackgroundTasks__EnabledTasks__7=JungleBusSyncMissingDataBackgroundTask
+    depends_on:
+      - ravendb
+    restart: unless-stopped
+
+volumes:
+  ravendb_data:
